@@ -5,7 +5,7 @@ import pickle
 import argparse
 
 class dict_sample:
-	def __init__(self, M = None, K = None, N = None, s = None, verbose = None):
+	def __init__(self, M = None, K = None, N = None, s = None, verbose = None, n_zeros = 2):
 		if M is None and s is None:
 			raise AttributeError("Either M or s must not be None.")
 		
@@ -14,6 +14,7 @@ class dict_sample:
 		self.s = s if s is not None else math.ceil(self.M/50)
 		self.K = K if K is not None else math.ceil(5*(self.M**1))
 		self.N = N if N is not None else math.ceil(5*(self.K**1.1))
+		self.n_zeros = n_zeros
 		self.default_thresh = 1/(self.s**2)
 		if verbose:
 			print(f"M = {self.M}, K = {self.K}, N = {self.N}, s = {self.s}, thresh = {round(self.default_thresh,2)}")
@@ -29,10 +30,12 @@ class dict_sample:
 
 	def build_X(self):
 		X = np.zeros((self.K,self.N))
+		X[0,list(range(self.n_zeros))] = 1
 		X[list(range(self.s)),0] = 1
-		X[[0]+list(range(self.s,2*self.s-1)),1] = 1
-		#X[[0]+list(range(2*self.s,3*self.s-1)),2] = 1
-		for i in range(2,self.N):
+		for i in range(1, self.n_zeros):
+			rows = random.sample(range(1,self.K),self.s-1)
+			X[rows,i] = 1
+		for i in range(self.n_zeros,self.N):
 			rows = random.sample(range(self.K),self.s)
 			X[rows,i] = 1
 		X = X - 2*X*np.random.binomial(1,0.5,(self.K,self.N))

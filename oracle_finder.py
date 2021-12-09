@@ -60,19 +60,11 @@ class oracle_finder:
 	def build_Ai_adj(self,i):
 		A, corr_idx, Afp = self.build_Ai(i)
 		inner_prod = np.trace(np.dot(A,self.C_norm))
-		#print(inner_prod/np.linalg.norm(A))
 		return A - inner_prod*self.C_norm
-
 
 	def get_basis(self,A):
 		E = np.linalg.eigh(A)
-		# plt.hist(E[0], density = True, bins=100)
-		# plt.ylabel('Count')
-		# plt.xlabel('Data')
-		# plt.show()
 		return E[1][:,self.DS.M-self.DS.s:]
-		# return E[1][:,self.DS.M-2*self.DS.s:]
-		# return E[1][:,math.ceil(0.8*self.DS.M):]
 
 	def svd_mat(self,A):
 		dims = np.shape(A)
