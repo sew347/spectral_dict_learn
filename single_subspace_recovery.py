@@ -7,10 +7,9 @@ import dict_sample as ds
 class single_subspace_recovery:
 	def __init__(self, DS, thresh, i):
 		self.i = i
-		self.corr_i = DS.corr[:,i]
 		self.M = DS.M
 		self.s = DS.s
-		self.I_i = np.nonzero(self.corr_i > thresh)[0]
+		self.I_i = np.nonzero(DS.corr[:,i] > thresh)[0]
 		self.HSig_i = self.build_HSig_i(DS)
 		self.HSig_proj_i = self.build_HSig_proj_i(DS)
 		self.S = self.get_basis()
