@@ -16,10 +16,10 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="This script runs a randomized dictionary learning test.", \
 	 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #	parser.add_argument('outfile', help='Output filepath')
+	parser.add_argument('-s', help='Sparsity', default = None, type = int)
 	parser.add_argument('-M', help='Dimension of sample vectors', type = int)
 	parser.add_argument('-N', help='Number of samples', default = None, type = int)
 	parser.add_argument('-K', help='Number of dictionary elements', default = None, type = int)
-	parser.add_argument('-s', help='Sparsity', default = None, type = int)
 	parser.add_argument('-thresh', help='Thresholding parameter', default = 1/2, type = float)
 	parser.add_argument('-T', help='Number of runs', default = 1, type = int)
 	parser.add_argument('-num_subspaces', help='Number of subspaces per dictionary', default = 10, type = int)
@@ -73,9 +73,9 @@ if __name__ == "__main__":
 	logging.info('Beginning testing.')
 	for t in range(args.T):
 		start = time.time()
-		DS = ds.dict_sample(args.M,args.s,args.K,args.N, n_zeros = 1)
+		DS = ds.dict_sample(M,s,K,N, n_zeros = 1)
 		sim_end = time.time()
-		SR = sr.subspace_recovery(DS, thresh, 20, parallel = parallel_flag)
+		SR = sr.subspace_recovery(DS, thresh, num_subspaces, parallel = parallel_flag)
 		est_end = time.time()
 		sim_time = sim_end - start
 		est_time = est_end - sim_end
@@ -83,6 +83,6 @@ if __name__ == "__main__":
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
 				for i in range(num_subspaces):
-					row = [t, i, SR.subspaces[i].eval_basis(), sim_time, est_time]
+					row = [t, i, SR.subspaces[i].accu, sim_time, est_time]
 					writer.writerow(row)
 	logging.info('Testing completed.')
