@@ -10,9 +10,9 @@ class single_subspace_recovery:
 		self.M = DS.M
 		self.s = DS.s
 		self.I_i = np.nonzero(DS.corr[:,i] > thresh)[0]
-		self.HSig_i = self.build_HSig_i(DS)
-		self.HSig_proj_i = self.build_HSig_proj_i(DS)
-		self.S = self.get_basis()
+		HSig_i = self.build_HSig_i(DS)
+		HSig_proj_i = self.build_HSig_proj_i(DS,HSig_i)
+		self.S = self.get_basis(HSig_proj_i)
 		self.accu = self.eval_basis(DS)
 
 	def build_HSig_i(self, DS):
@@ -22,12 +22,12 @@ class single_subspace_recovery:
 		HSig_i = HSig_i/len(self.I_i)
 		return HSig_i
 
-	def build_HSig_proj_i(self,DS):
-		inner_prod = np.trace(np.dot(self.HSig_i,DS.HSig_D))
-		return self.HSig_i - inner_prod*DS.HSig_D
+	def build_HSig_proj_i(self,DS, HSig_i):
+		inner_prod = np.trace(np.dot(HSig_i,DS.HSig_D))
+		return HSig_i - inner_prod*DS.HSig_D
 
-	def get_basis(self):
-		E = np.linalg.eigh(self.HSig_proj_i)
+	def get_basis(self, HSig_proj_i):
+		E = np.linalg.eigh(HSig_proj_i)
 		return E[1][:,self.M-self.s:]
 	
 	def subspace_dist(self,A,B):
