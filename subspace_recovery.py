@@ -15,24 +15,25 @@ from multiprocessing import Pool, cpu_count
 
 class subspace_recovery:
 
-	def __init__(self, DS, thresh, num_subspaces = -1, parallel = False, n_processes = None):
+	def __init__(self, DS, thresh, n_subspaces = -1, parallel = False, n_processes = 1):
 		self.DS = DS
 		self.thresh = thresh
-		self.num_subspaces = num_subspaces
-		if self.num_subspaces == -1:
-			self.num_subspaces = self.DS.N
-		if not parallel:
+		self.n_subspaces = n_subspaces
+		if self.n_subspaces == -1:
+			self.n_subspaces = self.DS.N
+		if not parallel or n_processes == 1:
 			self.subspaces = []
-			for i in range(self.num_subspaces):
+			for i in range(self.n_subspaces):
 				self.subspaces.append(self.recover_single_subspace(i))
 		else:
-			if n_processes is None:
-				max_avail_cpu = int(cpu_count()*(2/3))
-				if self.num_subspaces < max_avail_cpu:
-					n_processes = self.num_subspaces
-				else:
-					n_processes = max_avail_cpu
-			params = list(range(self.num_subspaces))
+			max_avail_cpu = int(cpu_count())
+			if n_processes > max_avail_cpu or n_processes == -1:
+				n_processes = max_avail_cpu
+			if self.n_subspaces < n_processes:
+				n_processes = self.n_subspaces
+			else:
+				n_processes = max_avail_cpu
+			params = list(range(self.n_subspaces))
 			with Pool(processes=n_processes) as executor:
 				self.subspaces = executor.map(self.recover_single_subspace, params)
 
