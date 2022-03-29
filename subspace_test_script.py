@@ -65,7 +65,7 @@ if __name__ == "__main__":
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
 			writer = csv.writer(res_f)
-			res_headers = ['t','i','basis accu','sim time','est time']
+			res_headers = ['t','i','basis error','sim time','est time']
 			writer.writerow(res_headers)
 		logging.info('Arguments and results saving to ' + result_path)
 	
@@ -83,6 +83,6 @@ if __name__ == "__main__":
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
 				for i in range(num_subspaces):
-					row = [t, i, SR.subspaces[i].accu, sim_time, est_time]
+					row = [t, i, SR.subspaces[i].err, sim_time, est_time]
 					writer.writerow(row)
 	logging.info('Testing completed.')

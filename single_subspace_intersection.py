@@ -12,7 +12,7 @@ class single_subspace_intersection:
 		self.M = np.shape(self.Si)[0]
 		self.dhat, self.emp_uniq_int_flag = self.subspace_intersection()
 		self.d, self.true_uniq_int_flag, self.true_uniq_int_idx = self.true_subspace_intersection(SR.DS)
-		self.accu = self.eval_intersection()
+		self.err = self.eval_intersection()
 
 	def proj_mat(self, A):
 		return np.dot(A,np.transpose(A))
@@ -31,11 +31,11 @@ class single_subspace_intersection:
 		supp_i = np.nonzero(DS.X[:,self.i])
 		supp_j = np.nonzero(DS.X[:,self.j])
 		supp_int = np.intersect1d(supp_i,supp_j)
-		if np.shape(supp_int)[0]==1 == 1:
+		if np.shape(supp_int)[0]==1:
 			return (DS.D[:,supp_int[0]], True, supp_int[0])
 		else:
 			return (0, False, -1/2)
-		
+
 	def eval_intersection(self):
 		if not(self.emp_uniq_int_flag) and not(self.true_uniq_int_flag):
 			return 0

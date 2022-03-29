@@ -24,40 +24,32 @@ class subspace_intersection:
 		self.intersections = []
 		if not parallel or n_processes == 1:
 			for i in range(self.max_idx-1):
-				for j in range(i+1, self.max_idx):
-					self.intersections.append(self.get_single_intersection([i,j]))
+				self.intersections.append(self.get_intersections_i(i))
 		else:
 			max_avail_cpu = int(cpu_count())
-			n_iter = int(self.max_idx*(self.max_idx-1)/2)
 			if n_processes > max_avail_cpu or n_processes == -1:
 				n_processes = max_avail_cpu
-			if self.n_subspaces < n_processes:
-				n_processes = self.n_subspaces
+			if (self.max_idx-1) < n_processes:
+				n_processes = self.max_idx - 1
 			else:
 				n_processes = max_avail_cpu
-			elems = set(range(self.max_idx))
-			params = list(combinations(set(elems), 2))
+			params = set(range(self.max_idx-1))
 			with Pool(processes=n_processes) as executor:
-				self.intersections = executor.map(self.get_single_intersection, params)
+				self.intersections = executor.map(self.get_intersections_i, params)
 		
-	def get_single_intersection(self, idx):
-		SI = ssi.single_subspace_intersection(self.SR,idx[0],idx[1], delta = self.delta)
-		return SI
-	
+	def get_intersections_i(self, i):
+		SI_i = []
+		for j in range(i+1,self.max_idx):
+			SSI = ssi.single_subspace_intersection(self.SR,i,j,delta = self.delta)
+			if SSI.emp_uniq_int_flag:
+				if self.is_new_dhat(SI_i,SSI.dhat):
+					SI_i.append(SSI)
+			if len(SI_i) >= self.SR.DS.s:
+				break
+		return SI_i
 
-	# def get_true_intersections(self):
-	# 	intersect_matrix = np.dot(np.transpose(np.abs(self.SR.DS.X[:,:self.max_idx])),np.abs(self.SR.DS.X[:,:self.max_idx]))
-	# 	np.fill_diagonal(intersect_matrix, 0)
-	# 	intersect_matrix *= 1 - np.tri(*intersect_matrix.shape, k=-1)
-	# 	all_true_int = np.nonzero(intersect_matrix)
-	# 	print(np.shape(all_true_int)[0])
-	# 	true_uniq_int = {}
-	# 	for m in range(np.shape(all_true_int[0])[0]):
-	# 		i = all_true_int[0][m]
-	# 		j = all_true_int[1][m]
-	# 		supp_i = np.nonzero(self.SR.DS.X[:,i])
-	# 		supp_j = np.nonzero(self.SR.DS.X[:,j])
-	# 		intersection = np.intersect1d(supp_i,supp_j)
-	# 		if np.shape(intersection)[0] == 1:
-	# 			true_uniq_int[(i,j)] =intersection
-	# 	return true_uniq_int
+	def is_new_dhat(self,SI_i,dhat):
+		for SSI in SI_i:
+			if np.abs(np.inner(SSI.dhat,dhat)) > self.delta:
+				return False
+		return True

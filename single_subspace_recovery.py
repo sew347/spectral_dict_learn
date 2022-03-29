@@ -13,7 +13,7 @@ class single_subspace_recovery:
 		HSig_i = self.build_HSig_i(DS)
 		HSig_proj_i = self.build_HSig_proj_i(DS,HSig_i)
 		self.S = self.get_basis(HSig_proj_i)
-		self.accu = self.eval_basis(DS)
+		self.err = self.eval_basis(DS)
 
 	def build_HSig_i(self, DS):
 		HSig_i = np.zeros((self.M,self.M))

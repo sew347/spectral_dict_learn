@@ -71,7 +71,7 @@ if __name__ == "__main__":
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
 			writer = csv.writer(res_f)
-			res_headers = ['t','i','j','accu','emp_int_flag','true_int_flag','true_int_idx','sim time','est time']
+			res_headers = ['t','i','j','accu','true_int_flag','true_int_idx','sim time','est time']
 			writer.writerow(res_headers)
 		logging.info('Arguments and results saving to ' + result_path)
 	
@@ -88,8 +88,9 @@ if __name__ == "__main__":
 		if save_results:
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
-				for SSI in SI.intersections:
-					row =[t,SSI.i,SSI.j,SSI.accu,SSI.emp_uniq_int_flag,\
+				for SI_i in SI.intersections:
+					for SSI in SI_i:
+						row =[t,SSI.i,SSI.j,SSI.err,\
 						  SSI.true_uniq_int_flag,SSI.true_uniq_int_idx,sim_time,est_time]
-					writer.writerow(row)
+						writer.writerow(row)
 	logging.info('Testing completed.')
