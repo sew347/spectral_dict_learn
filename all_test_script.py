@@ -52,7 +52,8 @@ if __name__ == "__main__":
 	save_results = True
 	now = datetime.now()
 	date_time = now.strftime("%m_%d_%Y_%H_%M")
-	result_path = result_dir + '/test_results_%(ts)s' % {'ts': date_time}
+	argstring = 's%d_M%d_K%d_N%d_' % (s,M,K,N)
+	result_path = result_dir + '/'+argstring+'%(ts)s' % {'ts': date_time}
 	result_path = os.path.abspath(result_path)
 	pathlib.Path(result_path).mkdir(parents=True, exist_ok=True)
 	log_fp = result_path + '/logs.log'
