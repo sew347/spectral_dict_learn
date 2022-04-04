@@ -9,7 +9,10 @@ class single_subspace_recovery:
 		self.i = i
 		self.M = DS.M
 		self.s = DS.s
-		self.I_i = np.nonzero(DS.corr[:,i] > thresh)[0]
+		if DS.lowmem:
+			self.I_i = np.setdiff1d(np.arange(DS.N),DS.uncorr_idx[i])
+		else:
+			self.I_i = np.nonzero(DS.corr[:,i] > thresh)[0]
 		HSig_i = self.build_HSig_i(DS)
 		HSig_proj_i = self.build_HSig_proj_i(DS,HSig_i)
 		self.S = self.get_basis(HSig_proj_i)

@@ -36,6 +36,9 @@ class subspace_recovery:
 			params = list(range(self.n_subspaces))
 			with Pool(processes=n_processes) as executor:
 				self.subspaces = executor.map(self.recover_single_subspace, params)
+		self.errs = []
+		for ssr in self.subspaces:
+			self.errs.append(ssr.err)
 
 	def recover_single_subspace(self, i):
 		return ssr.single_subspace_recovery(self.DS, self.thresh, i)

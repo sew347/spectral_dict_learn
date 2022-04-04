@@ -24,6 +24,7 @@ if __name__ == "__main__":
 	parser.add_argument('-T', help='Number of runs', default = 1, type = int)
 	parser.add_argument('-num_subspaces', help='Number of subspaces per dictionary', default = 10, type = int)
 	parser.add_argument('-num_processes', help='Number of parallel processes', default = 1, type = int)
+	parser.add_argument('-lowmem', help='Set to reduce memory overhead',action='store_true')
 	parser.add_argument('-result_dir', help='Destination directory for output files', default = 'results', type = str)
 	parser.add_argument('-seed', help='Random seed for test', default = None, type = int)
 	args = parser.parse_args()
@@ -34,9 +35,10 @@ if __name__ == "__main__":
 	s = args.s
 	thresh = args.thresh
 	T = args.T
-	num_subspaces = N if args.num_subspaces == -1 else args.num_subspaces
-	num_processes = args.num_processes
-	parallel_flag = True if num_processes >= 2 else False
+	n_subspaces = N if args.num_subspaces == -1 else args.num_subspaces
+	n_processes = args.num_processes
+	lowmem = args.lowmem
+	parallel_flag = True if n_processes >= 2 else False
 	result_dir = args.result_dir
 	seed = args.seed
 	
@@ -57,11 +59,12 @@ if __name__ == "__main__":
 		logging.info
 		res_fp = result_path + '/results.csv'
 		arg_fp = result_path + '/args.csv'
+		avg_fp = result_path + '/avg.csv'
 		#save arguments:
 		with open(arg_fp, 'w') as arg_f:
 			writer = csv.writer(arg_f)
-			arg_headers = ['M','s','K','N','thresh','T','num_subspaces','num_processes','seed']
-			row = [args.M,args.s,args.K,args.N,args.thresh,args.T,args.num_subspaces, args.num_processes, args.seed]
+			arg_headers = ['M','s','K','N','thresh','T','num_subspaces','num_processes','lowmem','seed']
+			row = [args.M,args.s,args.K,args.N,args.thresh,args.T,args.num_subspaces, args.num_processes, args.lowmem,args.seed]
 			writer.writerow(arg_headers)
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
@@ -72,18 +75,20 @@ if __name__ == "__main__":
 	
 	
 	logging.info('Beginning testing.')
+	all_errs = []
 	for t in range(args.T):
 		start = time.time()
-		DS = ds.dict_sample(M,s,K,N, n_zeros = 1)
+		DS = ds.dict_sample(M,s,K,N, n_zeros = 1, n_processes = n_processes, lowmem=lowmem, thresh=thresh)
 		sim_end = time.time()
-		SR = sr.subspace_recovery(DS, thresh, num_subspaces, parallel = parallel_flag, n_processes = num_processes)
+		SR = sr.subspace_recovery(DS, thresh, n_subspaces, parallel = parallel_flag, n_processes = n_processes)
 		est_end = time.time()
 		sim_time = sim_end - start
 		est_time = est_end - sim_end
+		all_errs = all_errs + SR.errs
 		if save_results:
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
-				for i in range(num_subspaces):
+				for i in range(n_subspaces):
 					row = [t, i, SR.subspaces[i].err, sim_time, est_time]
 					writer.writerow(row)
-	logging.info('Testing completed.')
+	logging.info('Testing completed. Avg performance %2f'%np.mean(all_errs))

@@ -27,6 +27,7 @@ if __name__ == "__main__":
 	parser.add_argument('-n_subspaces', help='Number of subspaces per dictionary', default = 10, type = int)
 	parser.add_argument('-max_idx', help = 'Maximum index for subspace intersection', default = 10, type = int)
 	parser.add_argument('-n_processes', help='Number of parallel processes', default = 1, type = int)
+	parser.add_argument('-lowmem', help='Set to reduce memory overhead',action='store_true')
 	parser.add_argument('-result_dir', help='Destination directory for output files', default = 'results', type = str)
 	parser.add_argument('-seed', help='Random seed for test', default = None, type = int)
 	args = parser.parse_args()
@@ -41,6 +42,7 @@ if __name__ == "__main__":
 	n_subspaces = N if args.n_subspaces == -1 else args.n_subspaces
 	max_idx = args.max_idx
 	n_processes = args.n_processes
+	lowmem = args.lowmem
 	parallel_flag = True if n_processes >= 2 else False
 	result_dir = args.result_dir
 	seed = args.seed
@@ -66,8 +68,8 @@ if __name__ == "__main__":
 		with open(arg_fp, 'w') as arg_f:
 			writer = csv.writer(arg_f)
 			arg_headers = ['M','s','K','N','thresh','delta','T','n_subspaces',\
-						   'max_idx','n_processes','result_dir','seed']
-			row = [M,s,K,N,thresh,delta,T,n_subspaces,max_idx,n_processes,result_dir,seed]
+						   'max_idx','n_processes','lowmem','result_dir','seed']
+			row = [M,s,K,N,thresh,delta,T,n_subspaces,max_idx,n_processes,lowmem,result_dir,seed]
 			writer.writerow(arg_headers)
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
@@ -79,13 +81,14 @@ if __name__ == "__main__":
 	logging.info('Beginning testing.')
 	for t in range(args.T):
 		start = time.time()
-		DS = ds.dict_sample(M,s,K,N, n_zeros = 1)
+		DS = ds.dict_sample(M,s,K,N, n_zeros = 1, n_processes = n_processes, lowmem=lowmem, thresh=thresh)
 		sim_end = time.time()
 		SR = sr.subspace_recovery(DS, thresh, n_subspaces, parallel = parallel_flag, n_processes = n_processes)
 		SI = si.subspace_intersection(SR, delta = delta, max_idx = max_idx, parallel = parallel_flag, n_processes = n_processes)
 		est_end = time.time()
 		sim_time = sim_end - start
 		est_time = est_end - sim_end
+		all_errs = []
 		if save_results:
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
@@ -94,4 +97,7 @@ if __name__ == "__main__":
 						row =[t,SSI.i,SSI.j,SSI.err,\
 						  SSI.true_uniq_int_flag,SSI.true_uniq_int_idx,sim_time,est_time]
 						writer.writerow(row)
-	logging.info('Testing completed.')
+		for SI_i in SI.intersections:
+			for SSI in SI_i:
+				all_errs.append(SSI.err)
+	logging.info('Testing completed. Avg performance %2f'%np.mean(all_errs))
