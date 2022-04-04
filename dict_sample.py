@@ -8,6 +8,7 @@ import argparse
 from scipy.sparse import csc_matrix
 from multiprocessing import Pool, cpu_count
 from scipy.sparse import csc_matrix
+import warnings
 
 
 #iterative refinement of subspace estimate
@@ -23,6 +24,9 @@ class dict_sample:
 		self.n_zeros = n_zeros
 		self.n_processes = n_processes
 		self.lowmem = lowmem
+		if N > 10**5 and not self.lowmem:
+			warnings.warn("N is greater than 100000 but lowmem mode not set. Setting lowmem automatically.")
+			self.lowmem = True
 		if self.n_processes == -1:
 			self.n_processes = int(cpu_count())
 		self.D = self.build_D()
@@ -35,6 +39,8 @@ class dict_sample:
 		else:
 			self.default_thresh = 1
 		self.HSig_D = self.build_HSig_D()
+		
+		
 		if not lowmem:
 			self.corr = np.abs(np.dot(np.transpose(self.Y),self.Y))
 		else:
