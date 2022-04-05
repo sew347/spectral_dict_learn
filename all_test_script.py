@@ -43,7 +43,6 @@ if __name__ == "__main__":
 	max_idx = args.max_idx
 	n_processes = args.n_processes
 	lowmem = args.lowmem
-	parallel_flag = True if n_processes >= 2 else False
 	result_dir = args.result_dir
 	seed = args.seed
 	
@@ -83,8 +82,8 @@ if __name__ == "__main__":
 		start = time.time()
 		DS = ds.dict_sample(M,s,K,N, n_zeros = 1, n_processes = n_processes, lowmem=lowmem, thresh=thresh)
 		sim_end = time.time()
-		SR = sr.subspace_recovery(DS, thresh, n_subspaces, parallel = parallel_flag, n_processes = n_processes)
-		SI = si.subspace_intersection(SR, delta = delta, max_idx = max_idx, parallel = parallel_flag, n_processes = n_processes)
+		SR = sr.subspace_recovery(DS, thresh, n_subspaces, n_processes = n_processes)
+		SI = si.subspace_intersection(SR, delta = delta, max_idx = max_idx, n_processes = n_processes)
 		est_end = time.time()
 		sim_time = sim_end - start
 		est_time = est_end - sim_end

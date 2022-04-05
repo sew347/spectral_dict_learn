@@ -15,14 +15,14 @@ from multiprocessing import Pool, cpu_count
 from itertools import combinations
 
 class subspace_intersection:
-	def __init__(self, SR, delta = 0.5, max_idx = -1, parallel = False, n_processes = None):
+	def __init__(self, SR, delta = 0.5, max_idx = -1, n_processes = 1):
 		self.SR = SR
 		self.delta = delta
 		self.max_idx = max_idx
 		if self.max_idx == -1 or self.max_idx > self.SR.n_subspaces:
 			self.max_idx = self.SR.n_subspaces
 		self.intersections = []
-		if not parallel or n_processes == 1:
+		if n_processes == 1:
 			for i in range(self.max_idx-1):
 				self.intersections.append(self.get_intersections_i(i))
 		else:
@@ -34,6 +34,7 @@ class subspace_intersection:
 			else:
 				n_processes = max_avail_cpu
 			params = set(range(self.max_idx-1))
+			print("Subspace Intersection: " +str(n_processes))
 			with Pool(processes=n_processes) as executor:
 				self.intersections = executor.map(self.get_intersections_i, params)
 		

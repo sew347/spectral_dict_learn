@@ -22,7 +22,13 @@ class dict_sample:
 		self.K = K if K is not None else math.ceil(1*(self.M**1))
 		self.N = N if N is not None else math.ceil(400*(((self.s-3)**2.5)*math.log(self.s)))
 		self.n_zeros = n_zeros
-		self.n_processes = n_processes
+		if n_processes == -1:
+			max_avail_cpu = int(cpu_count())
+			self.n_processes = max_avail_cpu
+		else:
+			self.n_processes = n_processes
+		print("Dictionary: " +str(self.n_processes))
+		self.thresh = thresh
 		self.lowmem = lowmem
 		if N > 10**5 and not self.lowmem:
 			warnings.warn("N is greater than 100000 but lowmem mode not set. Setting lowmem automatically.")
@@ -39,12 +45,10 @@ class dict_sample:
 		else:
 			self.default_thresh = 1
 		self.HSig_D = self.build_HSig_D()
-		
-		
-		if not lowmem:
+		if not self.lowmem:
 			self.corr = np.abs(np.dot(np.transpose(self.Y),self.Y))
 		else:
-			self.uncorr_idx = self.get_corr_lowmem(thresh)
+			self.uncorr_idx = self.get_corr_lowmem()
 
 	def build_D(self):
 		D = np.random.normal(0,1,(self.M,self.K))
@@ -86,19 +90,20 @@ class dict_sample:
 		if self.normflag:
 			self.Y = self.Y/np.linalg.norm(self.Y, axis = 0)
 			
-	def get_corr_lowmem(self,thresh):
+	def get_corr_lowmem(self):
 		uncorr_idx = []
 		if self.n_processes == 1:
 			for i in range(self.N):
-				uncorr_idx.append(self.get_uncorr_i(thresh,i))
-		# else:
-		# 	params = list(range(self.N))
-		# 	with Pool(processes=self.n_processes) as executor:
-		# 		Xcols = executor.map(self.get_Xcol, params)
-		# 	X = np.transpose(np.vstack(Xcols))
+				uncorr_idx.append(self.get_uncorr_i(i))
+		else:
+			params = list(range(self.N))
+			with Pool(processes=self.n_processes) as executor:
+				uncorr_results = executor.map(self.get_uncorr_i, params)
+		for i in range(self.N):
+			uncorr_idx.append(uncorr_results[i])
 		return(uncorr_idx)
 	
-	def get_uncorr_i(self,thresh, i):
+	def get_uncorr_i(self, i):
 		inners_i = np.dot(np.transpose(self.Y[:,i]),self.Y)
-		uncorr_i = np.nonzero(np.abs(inners_i) < thresh)[0]
+		uncorr_i = np.nonzero(np.abs(inners_i) < self.thresh)[0]
 		return uncorr_i
