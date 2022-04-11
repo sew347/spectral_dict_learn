@@ -3,7 +3,6 @@ import random
 import numpy.linalg as la
 import argparse
 import dict_sample as ds
-import matplotlib.pyplot as plt
 import time
 from datetime import datetime
 import logging
@@ -31,9 +30,8 @@ class subspace_recovery:
 				n_processes = max_avail_cpu
 			if self.n_subspaces < n_processes:
 				n_processes = self.n_subspaces
-			else:
-				n_processes = max_avail_cpu
 			print("Subspace recovery: "+str(n_processes))
+			#params = zip([self.DS]*self.n_subspaces,[self.thresh]*self.n_subspaces, list(range(self.n_subspaces)))
 			params = list(range(self.n_subspaces))
 			with Pool(processes=n_processes) as executor:
 				self.subspaces = executor.map(self.recover_single_subspace, params)
@@ -43,3 +41,9 @@ class subspace_recovery:
 
 	def recover_single_subspace(self, i):
 		return ssr.single_subspace_recovery(self.DS, self.thresh, i)
+	
+	# @staticmethod
+	# def recover_single_subspace(params):
+	# 	DS, thresh, i = params
+	# 	subspace_recov = ssr.single_subspace_recovery(DS,thresh,i)
+	# 	return subspace_recov

@@ -3,7 +3,6 @@ import random
 import numpy.linalg as la
 import argparse
 import dict_sample as ds
-import matplotlib.pyplot as plt
 import time
 from datetime import datetime
 import logging
@@ -29,6 +28,7 @@ if __name__ == "__main__":
 	parser.add_argument('-n_processes', help='Number of parallel processes', default = 1, type = int)
 	parser.add_argument('-lowmem', help='Set to reduce memory overhead',action='store_true')
 	parser.add_argument('-result_dir', help='Destination directory for output files', default = 'results', type = str)
+	parser.add_argument('-logflag', help='Flag for additional logging', action='store_true')
 	parser.add_argument('-seed', help='Random seed for test', default = None, type = int)
 	args = parser.parse_args()
 	
@@ -45,6 +45,7 @@ if __name__ == "__main__":
 	lowmem = args.lowmem
 	result_dir = args.result_dir
 	seed = args.seed
+	logflag = args.logflag
 	
 	if args.seed is not None:
 		np.random.seed(args.seed)
@@ -77,17 +78,29 @@ if __name__ == "__main__":
 			writer.writerow(res_headers)
 		logging.info('Arguments and results saving to ' + result_path)
 	
+	#ensure test range will include significant number of overlaps
+	fixed_supp = []
+	for i in range(int(n_subspaces/2)):
+		fixed_supp += [i,i]
+
 	logging.info('Beginning testing.')
 	for t in range(args.T):
 		start = time.time()
-		DS = ds.dict_sample(M,s,K,N, n_zeros = 1, n_processes = n_processes, lowmem=lowmem, thresh=thresh)
+		DS = ds.dict_sample(M,s,K,N, n_processes = n_processes, lowmem=lowmem, thresh=thresh, n_subspaces = n_subspaces, fixed_supp = fixed_supp)
 		sim_end = time.time()
+		logging.info('Dictionary %d generated in time %d' % (t+1,sim_end - start))
 		SR = sr.subspace_recovery(DS, thresh, n_subspaces, n_processes = n_processes)
+		sub_end = time.time()
+		logging.info('Subspace recovery batch %d recovered in time %d with avg subspace error %2f' % (t+1, sub_end-sim_end, np.mean(SR.errs)))
 		SI = si.subspace_intersection(SR, delta = delta, max_idx = max_idx, n_processes = n_processes)
 		est_end = time.time()
+		logging.info('Subspace intersection batch %d recovered in time %d' % (t+1, est_end - sub_end))
 		sim_time = sim_end - start
 		est_time = est_end - sim_end
+		logging.info('Total test time for batch %d: %d sec' % (t+1, est_time))
 		all_errs = []
+		all_inners = []
+		false_count = 0
 		if save_results:
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
@@ -98,5 +111,9 @@ if __name__ == "__main__":
 						writer.writerow(row)
 		for SI_i in SI.intersections:
 			for SSI in SI_i:
-				all_errs.append(SSI.err)
-	logging.info('Testing completed. Avg performance %2f'%np.mean(all_errs))
+				if SSI.true_uniq_int_flag and SSI.emp_uniq_int_flag:
+					all_errs.append(SSI.err)
+					all_inners.append(SSI.inner)
+				else:
+					false_count += 1
+	logging.info('Testing completed. Avg recovery error %2f. Avg inner product %2f. Number of false recoveries: %d'%(np.mean(all_errs),np.mean(all_inners),false_count))

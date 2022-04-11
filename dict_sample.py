@@ -3,38 +3,33 @@ import random
 import math
 import pickle
 import argparse
-#import scipy.sparse.linalg as spla
-#from sklearn.preprocessing import normalize
-from scipy.sparse import csc_matrix
 from multiprocessing import Pool, cpu_count
-from scipy.sparse import csc_matrix
 import warnings
-
-
-#iterative refinement of subspace estimate
+import logging
+import time
 
 class dict_sample:
-	def __init__(self, M, s, K, N, epsi = 1/2, normalize = False, n_zeros = 1, n_processes = 1, lowmem = False, thresh = 1/2):
-		if M is None and s is None:
-			raise AttributeError("Either M or s must not be None.")
-		self.M = M if M is not None else math.ceil((s/epsi)**(0.5))
-		self.s = s if s is not None else math.ceil(self.M*epsi)
-		self.K = K if K is not None else math.ceil(1*(self.M**1))
-		self.N = N if N is not None else math.ceil(400*(((self.s-3)**2.5)*math.log(self.s)))
-		self.n_zeros = n_zeros
+	def __init__(self, M, s, K, N, epsi = 1/2, normalize = False, n_processes = 1, lowmem = False, thresh = 1/2, fixed_supp = [], n_subspaces = -1):
+		self.M = M
+		self.s = s
+		self.K = K
+		self.N = N
+		# self.n_zeros = n_zeros
+		self.fixed_supp = fixed_supp
+		self.n_subspaces = self.N if n_subspaces == -1 else n_subspaces
 		if n_processes == -1:
 			max_avail_cpu = int(cpu_count())
 			self.n_processes = max_avail_cpu
 		else:
 			self.n_processes = n_processes
-		print("Dictionary: " +str(self.n_processes))
 		self.thresh = thresh
 		self.lowmem = lowmem
-		if N > 10**5 and not self.lowmem:
-			warnings.warn("N is greater than 100000 but lowmem mode not set. Setting lowmem automatically.")
+		if N > 10**6 and not self.lowmem:
+			warnings.warn("N is greater than 10^6 but lowmem mode not set. Setting lowmem automatically.")
 			self.lowmem = True
 		if self.n_processes == -1:
 			self.n_processes = int(cpu_count())
+		start = time.time()
 		self.D = self.build_D()
 		self.X = self.build_X()
 		self.Y = np.dot(self.D,self.X)
@@ -46,7 +41,7 @@ class dict_sample:
 			self.default_thresh = 1
 		self.HSig_D = self.build_HSig_D()
 		if not self.lowmem:
-			self.corr = np.abs(np.dot(np.transpose(self.Y),self.Y))
+			self.corr = np.abs(np.dot(np.transpose(self.Y[:,:self.n_subspaces]),self.Y))
 		else:
 			self.uncorr_idx = self.get_corr_lowmem()
 
@@ -69,14 +64,26 @@ class dict_sample:
 	
 	def get_Xcol(self,i):
 		Xcol = np.zeros(self.K)
-		if i < self.n_zeros:
-			start = 1+(self.s-1)*i
-			rows = [0]+list(range(start,start + self.s - 1))
+		if i < len(self.fixed_supp):
+			supp_elem = self.fixed_supp[i]
+			remaining_rows = list(range(supp_elem))+list(range(supp_elem+1,self.K))
+			rows = [supp_elem] + random.sample(remaining_rows,self.s-1)
 			Xcol[rows] = 1 - 2*np.random.binomial(1,0.5,self.s)
 		else:
 			rows = random.sample(range(self.K),self.s)
 			Xcol[rows] = 1 - 2*np.random.binomial(1,0.5,self.s)
 		return Xcol
+	
+	# def get_Xcol(self,i):
+	# 	Xcol = np.zeros(self.K)
+	# 	if i < self.n_zeros:
+	# 		start = 1+(self.s-1)*i
+	# 		rows = [0]+list(range(start,start + self.s - 1))
+	# 		Xcol[rows] = 1 - 2*np.random.binomial(1,0.5,self.s)
+	# 	else:
+	# 		rows = random.sample(range(self.K),self.s)
+	# 		Xcol[rows] = 1 - 2*np.random.binomial(1,0.5,self.s)
+	# 	return Xcol
 	
 	def build_HSig_D(self):
 		HSig_D = np.zeros((self.M,self.M))
@@ -99,8 +106,8 @@ class dict_sample:
 			params = list(range(self.N))
 			with Pool(processes=self.n_processes) as executor:
 				uncorr_results = executor.map(self.get_uncorr_i, params)
-		for i in range(self.N):
-			uncorr_idx.append(uncorr_results[i])
+			for i in range(self.N):
+				uncorr_idx.append(uncorr_results[i])
 		return(uncorr_idx)
 	
 	def get_uncorr_i(self, i):
