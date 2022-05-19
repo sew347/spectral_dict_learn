@@ -8,6 +8,10 @@ class single_subspace_intersection:
 		self.j = j
 		self.Si = SR.subspaces[i].S
 		self.Sj = SR.subspaces[j].S
+		self.err_Si = SR.subspaces[i].err
+		self.Ni = SR.subspaces[i].Ni
+		self.Nj = SR.subspaces[j].Ni
+		self.err_Sj = SR.subspaces[j].err
 		self.delta = delta
 		self.M = np.shape(self.Si)[0]
 		self.dhat, self.emp_uniq_int_flag = self.subspace_intersection()

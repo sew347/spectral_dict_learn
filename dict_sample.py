@@ -7,14 +7,15 @@ from multiprocessing import Pool, cpu_count
 import warnings
 import logging
 import time
+import numpy.linalg as la
 
 class dict_sample:
-	def __init__(self, M, s, K, N, epsi = 1/2, normalize = False, n_processes = 1, lowmem = False, thresh = 1/2, fixed_supp = [], n_subspaces = -1):
+	def __init__(self, M, s, K, N, distribution = 'bernoulli', epsi = 0, normalize = False, n_processes = 1, lowmem = False, full_corr = False, thresh = 1/2, fixed_supp = [], n_subspaces = -1):
 		self.M = M
 		self.s = s
 		self.K = K
 		self.N = N
-		# self.n_zeros = n_zeros
+		self.distribution = distribution
 		self.fixed_supp = fixed_supp
 		self.n_subspaces = self.N if n_subspaces == -1 else n_subspaces
 		if n_processes == -1:
@@ -32,7 +33,10 @@ class dict_sample:
 		start = time.time()
 		self.D = self.build_D()
 		self.X = self.build_X()
-		self.Y = np.dot(self.D,self.X)
+		self.Y = self.build_Y()
+		if epsi > 0:
+			print('Test suite is running with noise.')
+			self.Y = self.Y + np.random.normal(0,epsi*math.sqrt(s)/math.sqrt(M),(M,N))
 		self.normflag = normalize
 		if self.normflag:
 			self.default_thresh = 1/(self.s**2)
@@ -41,10 +45,14 @@ class dict_sample:
 			self.default_thresh = 1
 		self.HSig_D = self.build_HSig_D()
 		if not self.lowmem:
-			self.corr = np.abs(np.dot(np.transpose(self.Y[:,:self.n_subspaces]),self.Y))
+			if full_corr:
+				self.corr = np.abs(np.dot(np.transpose(self.Y),self.Y))
+			else:
+				self.corr = np.abs(np.dot(np.transpose(self.Y[:,:self.n_subspaces]),self.Y))
 		else:
 			self.uncorr_idx = self.get_corr_lowmem()
-
+		#self.Y = math.sqrt(self.s)*self.Y/la.norm(self.Y,axis =0)
+			
 	def build_D(self):
 		D = np.random.normal(0,1,(self.M,self.K))
 		D = D/np.linalg.norm(D, axis = 0)
@@ -61,6 +69,20 @@ class dict_sample:
 				Xcols = executor.map(self.get_Xcol, params)
 			X = np.transpose(np.vstack(Xcols))
 		return(X)
+	
+	def build_Y(self):
+		if self.distribution == 'bernoulli':
+			return np.dot(self.D,self.X)
+		if self.distribution == 'spherical':
+			Y = np.zeros((self.M,self.N))
+			for i in range(self.N):
+				supp_i = np.nonzero(self.X[:,i])[0]
+				basis = np.linalg.qr(self.D[:,supp_i])[0]
+				Y[:,i] = np.dot(basis, np.random.normal(0,1,self.s))
+			Y = math.sqrt(self.s)*Y/la.norm(Y,axis=0)
+			return Y
+		else:
+			raise ValueError('Unrecognized distribution.')
 	
 	def get_Xcol(self,i):
 		Xcol = np.zeros(self.K)
@@ -86,9 +108,10 @@ class dict_sample:
 	# 	return Xcol
 	
 	def build_HSig_D(self):
-		HSig_D = np.zeros((self.M,self.M))
-		for i in range(self.N):
-			HSig_D = HSig_D + np.outer(self.Y[:,i],self.Y[:,i])
+		# HSig_D = np.zeros((self.M,self.M))
+		# for i in range(self.N):
+		# 	HSig_D = HSig_D + np.outer(self.Y[:,i],self.Y[:,i])
+		HSig_D = np.dot(self.Y, np.transpose(self.Y))
 		return HSig_D/np.linalg.norm(HSig_D)
     
 	def reload_DY(self):

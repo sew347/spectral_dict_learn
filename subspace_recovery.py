@@ -14,9 +14,10 @@ from multiprocessing import Pool, cpu_count
 
 class subspace_recovery:
 
-	def __init__(self, DS, thresh, n_subspaces = -1, n_processes = 1):
+	def __init__(self, DS, thresh, n_subspaces = -1, n_processes = 1, mode = 'thresh'):
 		self.DS = DS
 		self.thresh = thresh
+		self.mode = mode
 		self.n_subspaces = n_subspaces
 		if self.n_subspaces == -1:
 			self.n_subspaces = self.DS.N
@@ -40,7 +41,7 @@ class subspace_recovery:
 			self.errs.append(ssr.err)
 
 	def recover_single_subspace(self, i):
-		return ssr.single_subspace_recovery(self.DS, self.thresh, i)
+		return ssr.single_subspace_recovery(self.DS, self.thresh, i, mode = self.mode)
 	
 	# @staticmethod
 	# def recover_single_subspace(params):

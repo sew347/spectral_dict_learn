@@ -22,9 +22,12 @@ class subspace_intersection:
 		if self.max_idx == -1 or self.max_idx > self.SR.n_subspaces:
 			self.max_idx = self.SR.n_subspaces
 		self.intersections = []
+		self.recovered = []
 		if n_processes == 1:
 			for i in range(self.max_idx-1):
-				self.intersections.append(self.get_intersections_i(i))
+				SI_i,R_i = self.get_intersections_i(i)
+				self.intersections.append(SI_i)
+				self.recovered.append(R_i)
 		else:
 			max_avail_cpu = int(cpu_count())
 			if n_processes > max_avail_cpu or n_processes == -1:
@@ -39,15 +42,21 @@ class subspace_intersection:
 				self.intersections = executor.map(self.get_intersections_i, params)
 		
 	def get_intersections_i(self, i):
+		#memory is typically too limited to hold all intersections; only store cases with empirical or true intersection
+		#any intersection with a true or empirical unique intersection
 		SI_i = []
+		#only recovered dict elements
+		R_i = []
 		for j in range(i+1,self.max_idx):
 			SSI = ssi.single_subspace_intersection(self.SR,i,j,delta = self.delta)
-			if SSI.emp_uniq_int_flag:
-				if self.is_new_dhat(SI_i,SSI.dhat):
-					SI_i.append(SSI)
-			if len(SI_i) >= self.SR.DS.s:
-				break
-		return SI_i
+			if SSI.emp_uniq_int_flag or SSI.true_uniq_int_flag:
+				SI_i.append(SSI)
+				if SSI.emp_uniq_int_flag:
+					if self.is_new_dhat(R_i,SSI.dhat):
+						R_i.append(SSI)
+				if len(R_i) >= self.SR.DS.s:
+					break
+		return SI_i, R_i
 
 	def is_new_dhat(self,SI_i,dhat):
 		for SSI in SI_i:
