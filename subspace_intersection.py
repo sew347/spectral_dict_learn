@@ -15,40 +15,27 @@ from multiprocessing import Pool, cpu_count
 from itertools import combinations
 
 class subspace_intersection:
-	def __init__(self, SR, delta = 0.5, max_idx = -1, n_processes = 1):
+	def __init__(self, SR, tau = 0.5, max_idx = -1, n_processes = 1):
 		self.SR = SR
-		self.delta = delta
+		self.tau = tau
 		self.max_idx = max_idx
 		if self.max_idx == -1 or self.max_idx > self.SR.n_subspaces:
 			self.max_idx = self.SR.n_subspaces
 		self.intersections = []
 		self.recovered = []
-		if n_processes == 1:
-			for i in range(self.max_idx-1):
-				SI_i,R_i = self.get_intersections_i(i)
-				self.intersections.append(SI_i)
-				self.recovered.append(R_i)
-		else:
-			max_avail_cpu = int(cpu_count())
-			if n_processes > max_avail_cpu or n_processes == -1:
-				n_processes = max_avail_cpu
-			if (self.max_idx-1) < n_processes:
-				n_processes = self.max_idx - 1
-			else:
-				n_processes = max_avail_cpu
-			params = set(range(self.max_idx-1))
-			print("Subspace Intersection: " +str(n_processes))
-			with Pool(processes=n_processes) as executor:
-				self.intersections = executor.map(self.get_intersections_i, params)
-		
+		for i in range(self.max_idx-1):
+			SI_i,R_i = self.get_intersections_i(i)
+			self.intersections.append(SI_i)
+			self.recovered.append(R_i)
+
 	def get_intersections_i(self, i):
 		#memory is typically too limited to hold all intersections; only store cases with empirical or true intersection
-		#any intersection with a true or empirical unique intersection
+		#SI_i: any intersection with a true or empirical unique intersection
 		SI_i = []
-		#only recovered dict elements
+		#R_i: only recovered dict elements
 		R_i = []
 		for j in range(i+1,self.max_idx):
-			SSI = ssi.single_subspace_intersection(self.SR,i,j,delta = self.delta)
+			SSI = ssi.single_subspace_intersection(self.SR,i,j,tau = self.tau)
 			if SSI.emp_uniq_int_flag or SSI.true_uniq_int_flag:
 				SI_i.append(SSI)
 				if SSI.emp_uniq_int_flag:
@@ -60,6 +47,6 @@ class subspace_intersection:
 
 	def is_new_dhat(self,SI_i,dhat):
 		for SSI in SI_i:
-			if np.abs(np.inner(SSI.dhat,dhat)) > self.delta:
+			if np.abs(np.inner(SSI.dhat,dhat)) > self.tau:
 				return False
 		return True

@@ -16,12 +16,15 @@ from itertools import combinations
 import networkx as nx
 
 class cluster_recovery:
-	def __init__(self, DS, thresh = 0.5, lowmem = False, block_size = 500, max_idx = -1):
+	def __init__(self, DS, thresh = 0.5, lowmem = False, block_size = 500, max_idx = -1, complement_mode = False):
 		self.DS = DS
 		self.T = DS.N*DS.s/10/DS.K
 		self.thresh = 0.5
 		self.lowmem = lowmem
 		self.block_size = block_size
+		self.complement_mode = complement_mode
+		if self.complement_mode:
+			logging.info('Complement mode is set to True.')
 		if not self.lowmem and self.DS.N > 40000:
 			warnings.warn('Lowmem not set for N > 40000. Setting automatically.')
 			self.lowmem = True
@@ -36,8 +39,11 @@ class cluster_recovery:
 			logging.info('Generating graph in standard mode.')
 			corr = np.abs(np.dot(np.transpose(self.DS.Y),self.DS.Y))
 			logging.info('Correlation data generated.')
-			adjacency = (corr>self.thresh)
-			np.fill_diagonal(adjacency,0)
+			adjacency = (corr>self.thresh) if not self.complement_mode else (corr<=self.thresh)
+			if not self.complement_mode:
+				np.fill_diagonal(adjacency,0)
+			else:
+				np.fill_diagonal(adjacency,1)
 			logging.info('Generating graph from adjacency.')
 			G = nx.from_numpy_array(adjacency)
 			logging.info('Graph generated.')
@@ -49,12 +55,15 @@ class cluster_recovery:
 			for i in range(n_blocks):
 				idx = i*self.block_size
 				corr_block = np.abs(np.dot(np.transpose(self.DS.Y[:,idx:(idx+self.block_size)]),self.DS.Y))
-				adj_block = list(np.nonzero(corr_block > self.thresh))
+				adj_block = list(np.nonzero(corr_block > self.thresh)) if not self.complement_mode else list(np.nonzero(corr_block <= self.thresh))
 				adj_block[0] = adj_block[0]+idx
 				edges = list(map(tuple, np.transpose(adj_block)))
 				G.add_edges_from(edges)
 			diag_indices = [(i,i) for i in range(self.DS.N)]
-			G.remove_edges_from(diag_indices)
+			if not self.complement_mode:
+				G.remove_edges_from(diag_indices)
+			else:
+				G.add_edges_from(diag_indices)
 			return G
 	
 	#recover dictionary elements by clustering
@@ -65,56 +74,3 @@ class cluster_recovery:
 			SCR = scr.single_cluster_recovery(self, 2*i,2*i+1)
 			recovered.append(SCR)
 		return recovered
-			
-# 	def recover_single_element(self,i1,i2):
-# 		cluster = self.single_o_cluster(i1,i2)
-# 		sig_cluster = np.zeros((M,M))
-# 		for c in cluster:
-# 			sig_cluster = sig_cluster + np.outer(DS.Y[:,c],DS.Y[:,c])
-# 		E = la.eigh(sig_cluster)
-# 		dhat = E[1][:,-1]
-# 		return dhat
-	
-# 	def single_o_cluster(self,i1,i2):
-# 		cluster = [i1,i2]
-# 		nbhd = np.intersect1d(list(self.G.neighbors(i1)),list(self.G.neighbors(i2)))
-# 		for n in self.G.nodes:
-# 			if n != i1 and n != i2:
-# 				int_nbhd = np.intersect1d(nbhd, list(self.G.neighbors(n)))
-# 				if len(int_nbhd) > self.T:
-# 					cluster.append(n)
-# 		return cluster
-	
-# 	def first_clique(self, idx):
-# 		clique = [idx]
-# 		neighbors = list(self.G.neighbors(idx))
-# 		count = 0
-# 		while(True):
-# 			count += 1
-# 			if count > 1000:
-# 				print('Infinite loop detected, aborting.')
-# 				break
-# 			if len(neighbors) > 0:
-# 				new_n = neighbors[0]
-# 				clique.append(new_n)
-# 			else:
-# 				break
-# 			neighbors = np.intersect1d(neighbors, list(self.G.neighbors(new_n)))
-# 		return clique
-	
-# 	def random_clique(self, idx):
-# 		clique = [idx]
-# 		neighbors = list(self.G.neighbors(idx))
-# 		count = 0
-# 		while(True):
-# 			count += 1
-# 			if count > 1000:
-# 				print('Infinite loop detected, aborting.')
-# 				break
-# 			if len(neighbors) > 0:
-# 				new_n = neighbors[random.randint(0,len(neighbors)-1)]
-# 				clique.append(new_n)
-# 			else:
-# 				break
-# 			neighbors = np.intersect1d(neighbors, list(self.G.neighbors(new_n)))
-# 		return clique

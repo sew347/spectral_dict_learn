@@ -3,7 +3,7 @@ import numpy.linalg as la
 
 class single_subspace_intersection:
 
-	def __init__(self, SR, i,j, delta = 0.5):
+	def __init__(self, SR, i,j, tau = 0.5):
 		self.i = i
 		self.j = j
 		self.Si = SR.subspaces[i].S
@@ -12,7 +12,7 @@ class single_subspace_intersection:
 		self.Ni = SR.subspaces[i].Ni
 		self.Nj = SR.subspaces[j].Ni
 		self.err_Sj = SR.subspaces[j].err
-		self.delta = delta
+		self.tau = tau
 		self.M = np.shape(self.Si)[0]
 		self.dhat, self.emp_uniq_int_flag = self.subspace_intersection()
 		self.d, self.true_uniq_int_flag, self.true_uniq_int_idx = self.true_subspace_intersection(SR.DS)
@@ -26,7 +26,7 @@ class single_subspace_intersection:
 		P_itoj = self.Si - np.dot(Pj,self.Si)
 		SVD = la.svd(P_itoj)
 		sing_vals = SVD[1]
-		if (sing_vals[-1] < self.delta) and (sing_vals[-2] >= self.delta):
+		if (sing_vals[-1] < self.tau) and (sing_vals[-2] >= self.tau):
 			return (np.dot(self.Si, SVD[2][-1]),True)
 		else:
 			return (0,False)

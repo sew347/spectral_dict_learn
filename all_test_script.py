@@ -19,14 +19,13 @@ if __name__ == "__main__":
 	parser.add_argument('-M', help='Dimension of sample vectors', type = int)
 	parser.add_argument('-N', help='Number of samples', default = None, type = int)
 	parser.add_argument('-K', help='Number of dictionary elements', default = None, type = int)
-	parser.add_argument('-thresh', help='Thresholding parameter', default = 1/2, type = float)
-	parser.add_argument('-delta', help='Singular value threshold', default = 1/2, type = float)
+	parser.add_argument('-thresh', help='Thresholding parameter for mode = thresh', default = 1/2, type = float)
+	parser.add_argument('-tau', help='Singular value threshold', default = 1/2, type = float)
 	parser.add_argument('-distribution', help='distribution', default = 'bernoulli', type = str)
-	parser.add_argument('-mode', help='subspace recovery method', default = 'thresh', type = str)
-	parser.add_argument('-T', help='Number of runs', default = 1, type = int)
-	parser.add_argument('-n_subspaces', help='Number of subspaces per dictionary', default = 10, type = int)
+	parser.add_argument('-mode', help='Subspace recovery method; supported options are corr_weight for E<yj,yi>^2 yiyi^T, thresh for thresholded yiyi^T.', default = 'corr_weight', type = str)
+	parser.add_argument('-T', help='Number of dictionaries to test over', default = 1, type = int)
+	parser.add_argument('-n_subspaces', help='Number of subspaces to recover per dictionary', default = 10, type = int)
 	parser.add_argument('-max_idx', help = 'Maximum index for subspace intersection', default = 10, type = int)
-	parser.add_argument('-n_processes', help='Number of parallel processes', default = 1, type = int)
 	parser.add_argument('-lowmem', help='Set to reduce memory overhead',action='store_true')
 	parser.add_argument('-result_dir', help='Destination directory for output files', default = 'results', type = str)
 	parser.add_argument('-logflag', help='Flag for additional logging', action='store_true')
@@ -39,12 +38,11 @@ if __name__ == "__main__":
 	s = args.s
 	mode = args.mode
 	thresh = args.thresh
-	delta = args.delta
+	tau = args.tau
 	distribution = args.distribution
 	T = args.T
 	n_subspaces = N if args.n_subspaces == -1 else args.n_subspaces
 	max_idx = args.max_idx
-	n_processes = args.n_processes
 	lowmem = args.lowmem
 	result_dir = args.result_dir
 	seed = args.seed
@@ -69,10 +67,10 @@ if __name__ == "__main__":
 		#save arguments:
 		with open(arg_fp, 'w') as arg_f:
 			writer = csv.writer(arg_f)
-			arg_headers = ['M','s','K','N','mode','thresh','delta','distribution',\
-						   'T','n_subspaces','max_idx','n_processes','lowmem','result_dir','seed']
-			row = [M,s,K,N,mode,thresh,delta,distribution,T,n_subspaces,max_idx,\
-				   n_processes,lowmem,result_dir,seed]
+			arg_headers = ['M','s','K','N','mode','thresh','tau','distribution',\
+						   'T','n_subspaces','max_idx','lowmem','result_dir','seed']
+			row = [M,s,K,N,mode,thresh,tau,distribution,T,n_subspaces,max_idx,\
+				   lowmem,result_dir,seed]
 			writer.writerow(arg_headers)
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
@@ -89,13 +87,13 @@ if __name__ == "__main__":
 	logging.info('Beginning testing.')
 	for t in range(args.T):
 		start = time.time()
-		DS = ds.dict_sample(M,s,K,N, distribution = distribution, n_processes = n_processes, lowmem=lowmem, thresh=thresh, n_subspaces = n_subspaces, fixed_supp = fixed_supp)
+		DS = ds.dict_sample(M,s,K,N, distribution = distribution, lowmem=lowmem, thresh=thresh, n_subspaces = n_subspaces, fixed_supp = fixed_supp)
 		sim_end = time.time()
 		logging.info('Dictionary %d generated in time %d' % (t+1,sim_end - start))
-		SR = sr.subspace_recovery(DS, thresh, n_subspaces, n_processes = n_processes, mode = mode)
+		SR = sr.subspace_recovery(DS, n_subspaces, mode = mode)
 		sub_end = time.time()
 		logging.info('Subspace recovery batch %d recovered in time %d with avg subspace error %2f' % (t+1, sub_end-sim_end, np.mean(SR.errs)))
-		SI = si.subspace_intersection(SR, delta = delta, max_idx = max_idx, n_processes = n_processes)
+		SI = si.subspace_intersection(SR, tau = tau, max_idx = max_idx)
 		est_end = time.time()
 		logging.info('Subspace intersection batch %d recovered in time %d' % (t+1, est_end - sub_end))
 		sim_time = sim_end - start
@@ -122,5 +120,4 @@ if __name__ == "__main__":
 				else:
 					false_count += 1
 		false_prop = false_count/n_rows
-		adj_score = (1-false_prop) * np.mean(all_inners)
-	logging.info('Testing completed.\nAvg recovery error: %2f\nAvg inner product: %2f\nProportion of false recoveries: %2f\nAdjusted Performance Score: %2f\n'%(np.mean(all_errs),np.mean(all_inners),false_prop, adj_score))
+	logging.info('Testing completed.\nAvg recovery error: %2f\nAvg inner product: %2f\nProportion of false recoveries: %2f'%(np.mean(all_errs),np.mean(all_inners),false_prop))
