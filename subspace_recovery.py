@@ -9,7 +9,6 @@ import logging
 import pathlib
 import csv
 import single_subspace_recovery as ssr
-import single_subspace_recovery_inv as ssri
 from multiprocessing import Pool, cpu_count
 
 class subspace_recovery:
