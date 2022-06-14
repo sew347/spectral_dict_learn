@@ -27,6 +27,7 @@ class subspace_intersection:
 			SI_i,R_i = self.get_intersections_i(i)
 			self.intersections.append(SI_i)
 			self.recovered.append(R_i)
+		self.errs, self.inners, self.false_count, self.n_ints = self.eval_intersections()
 
 	def get_intersections_i(self, i):
 		#memory is typically too limited to hold all intersections; only store cases with empirical or true intersection
@@ -50,3 +51,18 @@ class subspace_intersection:
 			if np.abs(np.inner(SSI.dhat,dhat)) > self.tau:
 				return False
 		return True
+	
+	def eval_intersections(self):
+		errs = []
+		inners = []
+		false_count = 0
+		n_ints = 0
+		for SI_i in self.intersections:
+			for SSI in SI_i:
+				n_ints = n_ints + 1
+				if SSI.true_uniq_int_flag and SSI.emp_uniq_int_flag:
+					errs.append(SSI.err)
+					inners.append(SSI.inner)
+				else:
+					false_count += 1
+		return errs, inners, false_count, n_ints

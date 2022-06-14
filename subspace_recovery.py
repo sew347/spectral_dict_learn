@@ -13,7 +13,7 @@ from multiprocessing import Pool, cpu_count
 
 class subspace_recovery:
 
-	def __init__(self, DS, n_subspaces = -1, mode = 'corr_weight', thresh = 1/2):
+	def __init__(self, DS, n_subspaces = -1, mode = 'quad_weight', thresh = 1/2):
 		self.DS = DS
 		self.thresh = thresh
 		self.mode = mode

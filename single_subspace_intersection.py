@@ -1,6 +1,24 @@
 import numpy as np
 import numpy.linalg as la
 
+#single_subspace_intersection.py
+#### summary ####
+#runs one subspace intersection for pair of indices i,j
+#### inputs ####
+#subspace_recovery object SR, indices i,j, eigenvalue threshold tau
+#### fields ####
+#i,j= indices
+#err_Sj = Sj recovery error
+#err_Si = Si recovery error
+#tau = eig threshold
+#M = dimension
+#emp_uniq_int_flag = indicates if est dict vector recovered (unique intersection detected)
+#dhat = estimated intersection vector, if one exists
+#true_uniq_int_flag = indicates if true subspaces had one-dimensional intersection
+#d = true intersection vector, if one exists
+#err = |d-dhat|_2
+#inner = |<d, dhat>|
+
 class single_subspace_intersection:
 
 	def __init__(self, SR, i,j, tau = 0.5):
@@ -9,8 +27,6 @@ class single_subspace_intersection:
 		self.Si = SR.subspaces[i].S
 		self.Sj = SR.subspaces[j].S
 		self.err_Si = SR.subspaces[i].err
-		self.Ni = SR.subspaces[i].Ni
-		self.Nj = SR.subspaces[j].Ni
 		self.err_Sj = SR.subspaces[j].err
 		self.tau = tau
 		self.M = np.shape(self.Si)[0]

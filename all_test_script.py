@@ -11,6 +11,9 @@ import pathlib
 import csv
 import subspace_recovery as sr
 import subspace_intersection as si
+import oracle_recovery as orr
+
+# main testing script for dictionary learning
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="This script runs a randomized dictionary learning test.", \
@@ -22,11 +25,13 @@ if __name__ == "__main__":
 	parser.add_argument('-thresh', help='Thresholding parameter for mode = thresh', default = 1/2, type = float)
 	parser.add_argument('-tau', help='Singular value threshold', default = 1/2, type = float)
 	parser.add_argument('-distribution', help='distribution', default = 'bernoulli', type = str)
-	parser.add_argument('-mode', help='Subspace recovery method; supported options are corr_weight for E<yj,yi>^2 yiyi^T, thresh for thresholded yiyi^T.', default = 'corr_weight', type = str)
+	parser.add_argument('-mode', help='Subspace recovery method; supported options are quad_weight for E<yj,yi>^2 yiyi^T, thresh for thresholded yiyi^T.', default = 'quad_weight', type = str)
 	parser.add_argument('-T', help='Number of dictionaries to test over', default = 1, type = int)
 	parser.add_argument('-n_subspaces', help='Number of subspaces to recover per dictionary', default = 10, type = int)
 	parser.add_argument('-max_idx', help = 'Maximum index for subspace intersection', default = 10, type = int)
+	parser.add_argument('-no_oracle', help='Flag for not including oracle recovery comparison', action='store_false')
 	parser.add_argument('-lowmem', help='Set to reduce memory overhead',action='store_true')
+	parser.add_argument('-n_processes', help = 'DEPRECATED: kept to rerun old shell commands', type = int)
 	parser.add_argument('-result_dir', help='Destination directory for output files', default = 'results', type = str)
 	parser.add_argument('-logflag', help='Flag for additional logging', action='store_true')
 	parser.add_argument('-seed', help='Random seed for test', default = None, type = int)
@@ -43,6 +48,7 @@ if __name__ == "__main__":
 	T = args.T
 	n_subspaces = N if args.n_subspaces == -1 else args.n_subspaces
 	max_idx = args.max_idx
+	oracle_flag = args.no_oracle
 	lowmem = args.lowmem
 	result_dir = args.result_dir
 	seed = args.seed
@@ -75,7 +81,7 @@ if __name__ == "__main__":
 			writer.writerow(row)
 		with open(res_fp, 'w') as res_f:
 			writer = csv.writer(res_f)
-			res_headers = ['t','i','j','error','inner','Si error','Sj error','Ni','Nj','emp_uniq_int_flag','true_int_flag','true_int_idx','sim time','est time']
+			res_headers = ['t','i','j','error','inner','Si error','Sj error','emp_uniq_int_flag','true_int_flag','true_int_idx','sim time','est time']
 			writer.writerow(res_headers)
 		logging.info('Arguments and results saving to ' + result_path)
 	
@@ -85,6 +91,12 @@ if __name__ == "__main__":
 		fixed_supp += [i,i]
 
 	logging.info('Beginning testing.')
+	all_errs = []
+	all_inners = []
+	total_false_count = 0
+	total_n_ints = 0
+	all_orr_true_inners = []
+	all_orr_est_inners = []
 	for t in range(args.T):
 		start = time.time()
 		DS = ds.dict_sample(M,s,K,N, distribution = distribution, lowmem=lowmem, thresh=thresh, n_subspaces = n_subspaces, fixed_supp = fixed_supp)
@@ -99,25 +111,27 @@ if __name__ == "__main__":
 		sim_time = sim_end - start
 		est_time = est_end - sim_end
 		logging.info('Total test time for batch %d: %d sec' % (t+1, est_time))
-		all_errs = []
-		all_inners = []
-		false_count = 0
-		n_rows = 0
 		if save_results:
 			with open(res_fp, 'a') as res_f:
 				writer = csv.writer(res_f)
 				for SI_i in SI.intersections:
 					for SSI in SI_i:
-						row =[t,SSI.i,SSI.j,SSI.err,SSI.inner,SSI.err_Si,SSI.err_Sj,SSI.Ni,SSI.Nj,\
+						row =[t,SSI.i,SSI.j,SSI.err,SSI.inner,SSI.err_Si,SSI.err_Sj,\
 						  SSI.emp_uniq_int_flag, SSI.true_uniq_int_flag,SSI.true_uniq_int_idx,sim_time,est_time]
 						writer.writerow(row)
-						n_rows = n_rows + 1
-		for SI_i in SI.intersections:
-			for SSI in SI_i:
-				if SSI.true_uniq_int_flag and SSI.emp_uniq_int_flag:
-					all_errs.append(SSI.err)
-					all_inners.append(SSI.inner)
-				else:
-					false_count += 1
-		false_prop = false_count/n_rows
-	logging.info('Testing completed.\nAvg recovery error: %2f\nAvg inner product: %2f\nProportion of false recoveries: %2f'%(np.mean(all_errs),np.mean(all_inners),false_prop))
+		all_errs = all_errs + SI.errs
+		all_inners = all_inners + SI.inners
+		total_false_count = total_false_count + SI.false_count
+		total_n_ints = total_n_ints + SI.n_ints
+		logging.info('Batch %d completed with avg inner product %2f'%(t+1,np.mean(SI.inners)))
+		if oracle_flag:
+			ORR_est = orr.oracle_recovery(DS,SI = SI)
+			all_orr_est_inners = all_orr_est_inners + ORR_est.inners
+			logging.info('Est oracle %d completed with avg inner product %2f'%(t+1,np.mean(ORR_est.inners)))
+			ORR_true = orr.oracle_recovery(DS, n_cols = int(n_subspaces/2))
+			all_orr_true_inners = all_orr_true_inners + ORR_true.inners
+			logging.info('True oracle %d completed with avg inner product %2f'%(t+1,np.mean(ORR_true.inners)))
+	if oracle_flag:
+		logging.info('Testing completed.\nAvg recovery error: %2f\nAvg inner product: %2f\nProportion of false recoveries: %2f\nEst Oracle avg inner: %2f\nTrue Oracle avg inner: %2f'%(np.mean(all_errs),np.mean(all_inners),(total_false_count/total_n_ints),np.mean(all_orr_est_inners),np.mean(all_orr_true_inners)))
+	else:
+		logging.info('Testing completed.\nAvg recovery error: %2f\nAvg inner product: %2f\nProportion of false recoveries: %2f'%(np.mean(all_errs),np.mean(all_inners),(total_false_count/total_n_ints)))

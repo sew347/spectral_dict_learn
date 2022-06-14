@@ -9,6 +9,32 @@ import logging
 import time
 import numpy.linalg as la
 
+#dict_sample.py
+#### inputs ####
+#M = data dimension
+#s = sparsity
+#K = number of dictionary elements
+#N = number of samples
+#D = optional input dictionary
+#distribution = dictionary distribution; supported choices are 'bernoulli' and 'spherical'
+#supp_distrib = support distribution; choices are 'uniform' and 'biased'
+#testmode = TO BE REMOVED
+#bias_weight = weight for biased supp_distrib probability
+#epsi = noise strength (not thoroughly tested)
+#lowmem = if set, calculate thresholding in blocks. Semi-deprecated
+# thresh = thresholding parameter
+# fixed_supp = list of fixed dictionary element in first samples; e.g. fixed_supp = [1,5,7,0] means the first sample will always contain dictionary element 1 in its support, the second contains 5, the third 7, and the fourth 0.
+# n_subspaces = parameter indicating how many subspaces to recover in support recovery. Used to limit the number of inner products that must be computed and stored.
+#full_corr = TO BE REMOVED
+#### fields ####
+#other than above inputs,
+#D = dictionary of uniformly random M-dimensional vectors
+#X = sparsity pattern matrix; each column is s-sparse.
+#Y = sample data D*X; +noise if epsi > 0
+#HSig_D = Y*Y^T/N
+#corr = inner products of first n_subspaces columns of Y with all elements in Y
+######################################################
+
 class dict_sample:
 	def __init__(self, M, s, K, N, D = None, distribution = 'bernoulli', supp_distrib = 'uniform', testmode = False, bias_weight = None, epsi = 0, lowmem = False, full_corr = False, thresh = 1/2, fixed_supp = [], n_subspaces = -1):
 		self.M = M
